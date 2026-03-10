@@ -8,9 +8,9 @@ import { useAppStore } from "@/store/useAppStore";
 import { LearningPathSteps } from "./LearningPathSteps";
 import { NerveConnections } from "./NerveConnections";
 import { ParticleField } from "./ParticleField";
+import { FloatingTitle } from "./FloatingTitle";
 
 // ─── Core Sphere Shaders ────────────────────────────────────────────────────
-// Applied to actual IcosahedronGeometry — creates hex grid + circuit pattern on a real 3D surface
 
 const coreVertexShader = `
   varying vec3 vNormal;
@@ -50,7 +50,6 @@ const coreFragmentShader = `
     );
   }
 
-  // Hexagonal grid on the sphere surface
   vec2 hexGrid(vec2 uv, float scale) {
     uv *= scale;
     vec2 r = vec2(1.0, 1.732);
@@ -66,38 +65,29 @@ const coreFragmentShader = `
   void main() {
     float t = uTime;
 
-    // Fresnel — bright amber edges, transparent center
     vec3 viewDir = normalize(-vPosition);
     float fresnel = 1.0 - abs(dot(viewDir, vNormal));
     fresnel = pow(fresnel, 1.5);
 
-    // Sphere UV from normal for hex grid
     vec3 n = normalize(vNormal);
     float theta = acos(clamp(n.y, -1.0, 1.0));
     float phi = atan(n.z, n.x);
     vec2 sphereUV = vec2(phi / 6.2832 + 0.5, theta / 3.1416);
 
-    // Animated hex grid
     vec2 hex = hexGrid(sphereUV + vec2(t * 0.02, 0.0), 12.0);
     float hexEdge = hex.x;
     float hexId = hex.y;
 
-    // Circuit trace lines — bolder for bright bg
     float traceH = smoothstep(0.47, 0.50, fract(sphereUV.x * 30.0 + t * 0.1));
     float traceV = smoothstep(0.47, 0.50, fract(sphereUV.y * 20.0 + t * 0.08));
     float traces = max(traceH, traceV) * 0.25;
 
-    // Data pulse dots — more cells light up for visibility
     float pulse = sin(t * 2.0 + hexId * 6.2832) * 0.5 + 0.5;
     float dataGlow = (hexId > 0.55) ? pulse * 0.5 : 0.0;
 
-    // Combine surface detail — stronger hex pattern
     float surface = hexEdge * 0.45 + traces + dataGlow;
-
-    // Breathing modulation
     float breath = 0.85 + 0.15 * sin(t * 1.5);
 
-    // Deep amber colors — saturated for bright bg contrast
     vec3 baseCol = vec3(0.85, 0.35, 0.02);
     vec3 hiCol = vec3(1.0, 0.5, 0.08);
     vec3 hotCol = vec3(1.0, 0.7, 0.25);
@@ -105,10 +95,7 @@ const coreFragmentShader = `
     vec3 col = mix(baseCol, hiCol, surface);
     col = mix(col, hotCol, fresnel * 0.5);
 
-    // Final brightness: boost for bright bg
     float brightness = (surface * 0.8 + fresnel * 1.0) * breath;
-
-    // Alpha: more opaque body, solid edges
     float alpha = (surface * 0.5 + fresnel * 0.85) * breath;
     alpha = clamp(alpha, 0.12, 0.95);
 
@@ -120,21 +107,32 @@ const coreFragmentShader = `
   }
 `;
 
-// ─── Core Brain Sphere ──────────────────────────────────────────────────────
+// ─── Heartbeat helper ───────────────────────────────────────────────────────
+
+function getHeartbeat(t: number, delay = 0): number {
+  return Math.pow(Math.max(0, Math.sin((t - delay) * 2.5) * 0.5 + 0.5), 4);
+}
+
+// ─── Core Brain Sphere — independent scale pulse ────────────────────────────
 
 function CoreSphere() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime();
+    const heartbeat = getHeartbeat(t);
+
     if (matRef.current) {
       matRef.current.uniforms.uTime.value += delta;
-      // Heartbeat — sharp spike
-      const t = state.clock.getElapsedTime();
-      const heartRaw = Math.sin(t * 2.5) * 0.5 + 0.5;
-      matRef.current.uniforms.uHeartbeat.value = Math.pow(heartRaw, 4);
+      matRef.current.uniforms.uHeartbeat.value = heartbeat;
     }
-    if (meshRef.current) meshRef.current.rotation.y += delta * 0.12;
+    if (meshRef.current) {
+      meshRef.current.rotation.y += delta * 0.12;
+      // Independent scale pulse — core swells 8%
+      const scale = 1.0 + heartbeat * 0.08;
+      meshRef.current.scale.setScalar(scale);
+    }
   });
 
   return (
@@ -157,7 +155,7 @@ function CoreSphere() {
   );
 }
 
-// ─── Inner Glow Core ────────────────────────────────────────────────────────
+// ─── Inner Glow Core — flares bigger on heartbeat ───────────────────────────
 
 function InnerGlow() {
   const ref = useRef<THREE.Mesh>(null);
@@ -165,11 +163,14 @@ function InnerGlow() {
   useFrame((state, delta) => {
     if (ref.current) {
       ref.current.rotation.y -= delta * 0.08;
-      // Heartbeat glow flare
       const t = state.clock.getElapsedTime();
-      const heartbeat = Math.pow(Math.sin(t * 2.5) * 0.5 + 0.5, 4);
+      const heartbeat = getHeartbeat(t);
+      // Opacity flare
       (ref.current.material as THREE.MeshBasicMaterial).opacity =
         0.7 + heartbeat * 0.3;
+      // Scale pump — 15% bigger than core for visual depth
+      const scale = 1.0 + heartbeat * 0.15;
+      ref.current.scale.setScalar(scale);
     }
   });
 
@@ -186,24 +187,7 @@ function InnerGlow() {
   );
 }
 
-// ─── Ambient Glow Halo — soft warm backdrop behind the brain ─────────────────
-
-function AmbientGlow() {
-  return (
-    <mesh>
-      <sphereGeometry args={[2.2, 32, 32]} />
-      <meshBasicMaterial
-        color="#ffad50"
-        transparent
-        opacity={0.07}
-        depthWrite={false}
-        side={THREE.BackSide}
-      />
-    </mesh>
-  );
-}
-
-// ─── Wireframe Shell ────────────────────────────────────────────────────────
+// ─── Wireframe Shell — breathes outward on heartbeat ────────────────────────
 
 function WireframeShell({
   radius,
@@ -222,10 +206,21 @@ function WireframeShell({
 }) {
   const ref = useRef<THREE.Mesh>(null);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (ref.current) {
+      const t = state.clock.getElapsedTime();
+      const heartbeat = getHeartbeat(t, 0.05); // slight delay after core
+
       ref.current.rotation.y += delta * rotSpeedY;
       ref.current.rotation.x += delta * rotSpeedX;
+
+      // Breathe outward — 12% expansion
+      const scale = 1.0 + heartbeat * 0.12;
+      ref.current.scale.setScalar(scale);
+
+      // Opacity surge
+      (ref.current.material as THREE.MeshBasicMaterial).opacity =
+        opacity + heartbeat * 0.2;
     }
   });
 
@@ -244,7 +239,7 @@ function WireframeShell({
   );
 }
 
-// ─── Orbital Ring ───────────────────────────────────────────────────────────
+// ─── Orbital Ring — staggered heartbeat ripple ──────────────────────────────
 
 function OrbitalRing({
   radius,
@@ -253,6 +248,7 @@ function OrbitalRing({
   speed,
   opacity = 0.4,
   tube = 0.006,
+  heartbeatDelay = 0,
 }: {
   radius: number;
   tiltX: number;
@@ -260,18 +256,34 @@ function OrbitalRing({
   speed: number;
   opacity?: number;
   tube?: number;
+  heartbeatDelay?: number;
 }) {
   const ref = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime();
+    const heartbeat = getHeartbeat(t, heartbeatDelay);
+
     if (ref.current) {
-      ref.current.rotation.y += delta * speed;
+      // Speed surge on heartbeat — rotation speeds up briefly
+      const speedMult = 1.0 + heartbeat * 1.5;
+      ref.current.rotation.y += delta * speed * speedMult;
+    }
+    if (meshRef.current) {
+      // Scale ripple — ring expands outward
+      const scale = 1.0 + heartbeat * 0.10;
+      meshRef.current.scale.setScalar(scale);
+
+      // Opacity pulse
+      (meshRef.current.material as THREE.MeshBasicMaterial).opacity =
+        opacity + heartbeat * 0.25;
     }
   });
 
   return (
     <group ref={ref} rotation={[tiltX, 0, tiltZ]}>
-      <mesh>
+      <mesh ref={meshRef}>
         <torusGeometry args={[radius, tube, 16, 128]} />
         <meshBasicMaterial
           color="#d07018"
@@ -285,10 +297,11 @@ function OrbitalRing({
   );
 }
 
-// ─── Data Points — small glowing dots orbiting the brain ────────────────────
+// ─── Data Points — scatter outward on heartbeat ─────────────────────────────
 
 function DataPoints({ count = 40, radius = 1.6 }: { count?: number; radius?: number }) {
   const ref = useRef<THREE.Points>(null);
+  const matRef = useRef<THREE.PointsMaterial>(null);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -305,16 +318,30 @@ function DataPoints({ count = 40, radius = 1.6 }: { count?: number; radius?: num
     return geo;
   }, [count, radius]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (ref.current) {
+      const t = state.clock.getElapsedTime();
+      const heartbeat = getHeartbeat(t, 0.1); // slight delay
+
       ref.current.rotation.y += delta * 0.05;
       ref.current.rotation.x += delta * 0.02;
+
+      // Points scatter outward on beat — 15% expansion
+      const scale = 1.0 + heartbeat * 0.15;
+      ref.current.scale.setScalar(scale);
+    }
+    // Point size surge — grow brighter/larger on beat
+    if (matRef.current) {
+      const t = state.clock.getElapsedTime();
+      const heartbeat = getHeartbeat(t, 0.1);
+      matRef.current.size = 0.06 + heartbeat * 0.03;
     }
   });
 
   return (
     <points ref={ref} geometry={geometry}>
       <pointsMaterial
+        ref={matRef}
         color="#d07018"
         size={0.06}
         transparent
@@ -332,9 +359,8 @@ function DataPoints({ count = 40, radius = 1.6 }: { count?: number; radius?: num
 export function HeroScene() {
   const scrollProgress = useAppStore((s) => s.scrollProgress);
   const groupRef = useRef<THREE.Group>(null);
-  const floatGroupRef = useRef<THREE.Group>(null);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (groupRef.current) {
       const targetZ = 8 + scrollProgress * 15;
       const targetY = scrollProgress * -3;
@@ -349,26 +375,16 @@ export function HeroScene() {
         0.05
       );
     }
-
-    // Heartbeat scale pulse on the brain group
-    if (floatGroupRef.current) {
-      const t = state.clock.getElapsedTime();
-      const heartbeat = Math.pow(Math.sin(t * 2.5) * 0.5 + 0.5, 4);
-      const scale = 1.0 + heartbeat * 0.06;
-      floatGroupRef.current.scale.setScalar(scale);
-    }
   });
 
   return (
     <>
-      {/* Soft ambient + directional for bright scene */}
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 5, 5]} intensity={0.3} color="#fff5e0" />
 
       <group ref={groupRef}>
         <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.3}>
-          <group ref={floatGroupRef}>
-            <AmbientGlow />
+          <group>
             <CoreSphere />
             <InnerGlow />
             <WireframeShell
@@ -379,28 +395,21 @@ export function HeroScene() {
               color="#c96a10"
               opacity={0.45}
             />
-            <WireframeShell
-              radius={1.8}
-              detail={1}
-              rotSpeedY={0.04}
-              rotSpeedX={-0.02}
-              color="#b87020"
-              opacity={0.3}
-            />
-            <OrbitalRing radius={1.5} tiltX={0} tiltZ={0} speed={0.3} opacity={0.7} tube={0.012} />
-            <OrbitalRing radius={1.55} tiltX={Math.PI / 4} tiltZ={0.2} speed={-0.2} opacity={0.55} tube={0.01} />
-            <OrbitalRing radius={1.45} tiltX={-Math.PI / 6} tiltZ={-0.3} speed={0.25} opacity={0.5} tube={0.01} />
-            <OrbitalRing radius={1.7} tiltX={Math.PI / 3} tiltZ={0.5} speed={0.15} opacity={0.35} tube={0.008} />
+            {/* Orbital rings with staggered heartbeat delays */}
+            <OrbitalRing radius={1.5} tiltX={0} tiltZ={0} speed={0.3} opacity={0.7} tube={0.012} heartbeatDelay={0.06} />
+            <OrbitalRing radius={1.55} tiltX={Math.PI / 4} tiltZ={0.2} speed={-0.2} opacity={0.55} tube={0.01} heartbeatDelay={0.12} />
+            <OrbitalRing radius={1.45} tiltX={-Math.PI / 6} tiltZ={-0.3} speed={0.25} opacity={0.5} tube={0.01} heartbeatDelay={0.18} />
+            <OrbitalRing radius={1.7} tiltX={Math.PI / 3} tiltZ={0.5} speed={0.15} opacity={0.35} tube={0.008} heartbeatDelay={0.24} />
             <DataPoints count={70} radius={1.6} />
           </group>
         </Float>
 
-        {/* Nerve connections from brain to cards */}
         <NerveConnections />
-
-        {/* Learning path step cards */}
         <LearningPathSteps />
       </group>
+
+      {/* 3D floating title */}
+      <FloatingTitle />
 
       {/* Background particles */}
       <ParticleField />

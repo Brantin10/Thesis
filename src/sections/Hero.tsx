@@ -16,17 +16,7 @@ export function Hero() {
           Bachelor Thesis — Spring 2026
         </motion.div>
 
-        {/* Title */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.5 }}
-          className="text-display text-primary"
-        >
-          AI-Driven
-          <br />
-          <span className="text-accent">Learning Paths</span>
-        </motion.h1>
+        {/* Title is now rendered as 3D text in the scene (FloatingTitle.tsx) */}
 
         {/* Subtitle */}
         <motion.p

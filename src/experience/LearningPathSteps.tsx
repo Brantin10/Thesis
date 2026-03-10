@@ -83,7 +83,7 @@ function StepCard({
             ref={htmlRef}
             className="select-none whitespace-nowrap rounded-lg border border-amber-400/20 px-4 py-2 text-sm font-medium backdrop-blur-md"
             style={{
-              background: "rgba(255, 250, 240, 0.85)",
+              background: "rgba(240, 248, 255, 0.85)",
               color: "#1a1408",
               boxShadow:
                 "0 0 15px rgba(255, 154, 46, 0.2), 0 0 30px rgba(255, 154, 46, 0.08)",

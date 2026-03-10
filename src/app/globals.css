@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Bright Jarvis theme */
-  --color-background: #F5F5F0;
-  --color-surface: #ECEEF0;
+  /* Light blue space Jarvis theme */
+  --color-background: #E8F0FA;
+  --color-surface: #E0EAF4;
   --color-primary: #1a1408;
   --color-secondary: #7a6548;
   --color-accent: #ff9a2e;
@@ -114,7 +114,7 @@ html.lenis body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #E4EAED;
+  background: #D4E2F0;
 }
 
 ::-webkit-scrollbar-thumb {
