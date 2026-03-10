@@ -113,6 +113,37 @@ function SceneSetup() {
   return null;
 }
 
+// ─── Mouse Parallax — camera shifts with cursor for depth feel ──────────────
+
+function MouseParallax() {
+  const { camera } = useThree();
+  const mouse = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      mouse.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouse.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    window.addEventListener("mousemove", handler);
+    return () => window.removeEventListener("mousemove", handler);
+  }, []);
+
+  useFrame(() => {
+    camera.position.x = THREE.MathUtils.lerp(
+      camera.position.x,
+      mouse.current.x * 0.5,
+      0.05
+    );
+    camera.position.y = THREE.MathUtils.lerp(
+      camera.position.y,
+      -mouse.current.y * 0.3,
+      0.05
+    );
+  });
+
+  return null;
+}
+
 // ─── Loader ─────────────────────────────────────────────────────────────────
 
 function Loader() {
@@ -147,6 +178,7 @@ export function SceneCanvas() {
           style={{ background: "#C4D8F0" }}
         >
           <SceneSetup />
+          <MouseParallax />
           <GradientBackground />
           <HeroScene />
           {!isMobile && <PostProcessing />}
