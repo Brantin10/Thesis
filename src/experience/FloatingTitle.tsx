@@ -50,7 +50,7 @@ export function FloatingTitle() {
     <group ref={groupRef}>
       <Center>
         <group>
-          {/* Line 1: AI-Driven — polished bronze */}
+          {/* Line 1: AI-Driven — glowing Jarvis orange */}
           <Text3D
             font={FONT_URL}
             size={0.65}
@@ -64,19 +64,20 @@ export function FloatingTitle() {
           >
             AI-Driven
             <meshPhysicalMaterial
-              color="#b8976a"
-              metalness={0.85}
-              roughness={0.15}
-              clearcoat={1.0}
-              clearcoatRoughness={0.05}
-              reflectivity={0.9}
-              envMapIntensity={1.2}
+              color="#e88a20"
+              metalness={0.3}
+              roughness={0.2}
+              clearcoat={0.6}
+              clearcoatRoughness={0.1}
+              reflectivity={0.5}
+              emissive="#d07018"
+              emissiveIntensity={0.6}
               transparent
-              opacity={0.88}
+              opacity={0.7}
             />
           </Text3D>
 
-          {/* Line 2: Learning Paths — amber gold with emissive glow */}
+          {/* Line 2: Learning Paths — glowing Jarvis orange (warmer) */}
           <Text3D
             font={FONT_URL}
             size={0.65}
@@ -91,17 +92,16 @@ export function FloatingTitle() {
           >
             Learning Paths
             <meshPhysicalMaterial
-              color="#e8a84c"
-              metalness={0.8}
-              roughness={0.12}
-              clearcoat={1.0}
-              clearcoatRoughness={0.03}
-              reflectivity={1.0}
-              envMapIntensity={1.4}
-              emissive="#d4890a"
-              emissiveIntensity={0.15}
+              color="#ff9a2e"
+              metalness={0.3}
+              roughness={0.15}
+              clearcoat={0.6}
+              clearcoatRoughness={0.1}
+              reflectivity={0.5}
+              emissive="#e87a10"
+              emissiveIntensity={0.7}
               transparent
-              opacity={0.9}
+              opacity={0.65}
             />
           </Text3D>
         </group>
