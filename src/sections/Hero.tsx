@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 
 export function Hero() {
   return (
-    <section className="relative flex h-screen items-start justify-center overflow-hidden">
-      <div className="relative z-10 mt-24 flex max-w-4xl flex-col items-center gap-4 px-6 text-center">
+    <section className="relative flex h-screen items-start justify-center overflow-hidden pointer-events-none">
+      <div className="relative z-10 mt-24 flex max-w-4xl flex-col items-center gap-4 px-6 text-center pointer-events-auto">
         {/* Tag */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

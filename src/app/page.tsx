@@ -12,12 +12,16 @@ import { useScrollProgress } from "@/hooks/useScrollProgress";
 import { useViewport } from "@/hooks/useViewport";
 import { useLenisScroll } from "@/hooks/useLenis";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
+import { useAudioEngine } from "@/hooks/useAudioEngine";
+import { CustomCursor } from "@/components/ui/CustomCursor";
+import { AudioControls } from "@/components/ui/AudioControls";
 
 export default function Home() {
   useScrollProgress();
   useViewport();
   useLenisScroll();
   useAdaptiveQuality();
+  const { initAudio } = useAudioEngine();
 
   return (
     <>
@@ -31,6 +35,8 @@ export default function Home() {
         <ReadThesis />
       </main>
       <Footer />
+      <CustomCursor />
+      <AudioControls onFirstInteraction={initAudio} />
     </>
   );
 }

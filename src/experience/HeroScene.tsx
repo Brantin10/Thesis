@@ -14,6 +14,7 @@ import { ParticleField } from "./ParticleField";
 import { FloatingTitle } from "./FloatingTitle";
 import { InstancedParticles } from "./InstancedParticles";
 import { GlowHalo } from "./GlowHalo";
+import { InteractiveBrainRegion } from "./InteractiveBrainRegion";
 
 // ─── Core Sphere Shaders ────────────────────────────────────────────────────
 
@@ -537,76 +538,90 @@ export function HeroScene() {
           floatIntensity={reducedMotion ? 0 : 0.3}
         >
           <group>
-            <CoreSphere />
-            <HeartbeatLight />
-            <InnerGlow />
-            <WireframeShell
-              radius={0.85}
-              detail={2}
-              rotSpeedY={-0.15}
-              rotSpeedX={0.05}
-              color="#c96a10"
-              opacity={0.45}
-            />
-            {/* Orbital rings with staggered heartbeat delays */}
-            <OrbitalRing
-              radius={1.5}
-              tiltX={0}
-              tiltZ={0}
-              speed={0.3}
-              opacity={0.7}
-              tube={0.012}
-              heartbeatDelay={0.06}
-            />
-            <OrbitalRing
-              radius={1.55}
-              tiltX={Math.PI / 4}
-              tiltZ={0.2}
-              speed={-0.2}
-              opacity={0.55}
-              tube={0.01}
-              heartbeatDelay={0.12}
-            />
-            <OrbitalRing
-              radius={1.45}
-              tiltX={-Math.PI / 6}
-              tiltZ={-0.3}
-              speed={0.25}
-              opacity={0.5}
-              tube={0.01}
-              heartbeatDelay={0.18}
-            />
-            <OrbitalRing
-              radius={1.7}
-              tiltX={Math.PI / 3}
-              tiltZ={0.5}
-              speed={0.15}
-              opacity={0.35}
-              tube={0.008}
-              heartbeatDelay={0.24}
-            />
-            {/* Fake bloom glow halos — additive glow around key elements */}
-            <GlowHalo
-              type="sphere"
-              size={1.2}
-              glowScale={1.18}
-              color="#ff9a2e"
-              baseOpacity={0.15}
-              peakOpacity={0.45}
-            />
-            <GlowHalo
-              type="sphere"
-              size={0.5}
-              glowScale={1.25}
-              color="#e87a10"
-              baseOpacity={0.12}
-              peakOpacity={0.4}
-            />
-            {/* GPU Instanced Particles — replaces old DataPoints */}
-            <InstancedParticles
-              count={quality.particleCount}
-              radius={1.6}
-            />
+            {/* Interactive region: Neural Network Core */}
+            <InteractiveBrainRegion regionId="core">
+              <CoreSphere />
+              <HeartbeatLight />
+              <InnerGlow />
+              {/* Fake bloom glow halos */}
+              <GlowHalo
+                type="sphere"
+                size={1.2}
+                glowScale={1.18}
+                color="#ff9a2e"
+                baseOpacity={0.15}
+                peakOpacity={0.45}
+              />
+              <GlowHalo
+                type="sphere"
+                size={0.5}
+                glowScale={1.25}
+                color="#e87a10"
+                baseOpacity={0.12}
+                peakOpacity={0.4}
+              />
+            </InteractiveBrainRegion>
+
+            {/* Interactive region: Data Processing Layer */}
+            <InteractiveBrainRegion regionId="shell">
+              <WireframeShell
+                radius={0.85}
+                detail={2}
+                rotSpeedY={-0.15}
+                rotSpeedX={0.05}
+                color="#c96a10"
+                opacity={0.45}
+              />
+            </InteractiveBrainRegion>
+
+            {/* Interactive region: Attention Mechanism Orbits */}
+            <InteractiveBrainRegion regionId="orbits">
+              <OrbitalRing
+                radius={1.5}
+                tiltX={0}
+                tiltZ={0}
+                speed={0.3}
+                opacity={0.7}
+                tube={0.012}
+                heartbeatDelay={0.06}
+              />
+              <OrbitalRing
+                radius={1.55}
+                tiltX={Math.PI / 4}
+                tiltZ={0.2}
+                speed={-0.2}
+                opacity={0.55}
+                tube={0.01}
+                heartbeatDelay={0.12}
+              />
+              <OrbitalRing
+                radius={1.45}
+                tiltX={-Math.PI / 6}
+                tiltZ={-0.3}
+                speed={0.25}
+                opacity={0.5}
+                tube={0.01}
+                heartbeatDelay={0.18}
+              />
+              <OrbitalRing
+                radius={1.7}
+                tiltX={Math.PI / 3}
+                tiltZ={0.5}
+                speed={0.15}
+                opacity={0.35}
+                tube={0.008}
+                heartbeatDelay={0.24}
+              />
+            </InteractiveBrainRegion>
+
+            {/* Interactive region: Training Data Field */}
+            <InteractiveBrainRegion regionId="particles">
+              <InstancedParticles
+                count={quality.particleCount}
+                radius={1.6}
+              />
+            </InteractiveBrainRegion>
+
             {quality.enableShockwave && <HeartbeatShockwave />}
           </group>
         </Float>
