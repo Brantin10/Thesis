@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, Suspense } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Float, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
@@ -379,8 +379,9 @@ export function HeroScene() {
 
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 5, 5]} intensity={0.3} color="#fff5e0" />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[5, 5, 5]} intensity={0.4} color="#fff5e0" />
+      <directionalLight position={[-4, 3, 6]} intensity={0.3} color="#ffe8cc" />
 
       <group ref={groupRef}>
         <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.3}>
@@ -408,8 +409,10 @@ export function HeroScene() {
         <LearningPathSteps />
       </group>
 
-      {/* 3D floating title */}
-      <FloatingTitle />
+      {/* 3D floating title — Suspense for font loading */}
+      <Suspense fallback={null}>
+        <FloatingTitle />
+      </Suspense>
 
       {/* Background particles */}
       <ParticleField />
