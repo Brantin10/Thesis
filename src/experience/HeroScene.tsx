@@ -547,18 +547,18 @@ export function HeroScene() {
               <GlowHalo
                 type="sphere"
                 size={1.2}
-                glowScale={1.18}
+                glowScale={1.12}
                 color="#ff9a2e"
-                baseOpacity={0.15}
-                peakOpacity={0.45}
+                baseOpacity={0.06}
+                peakOpacity={0.2}
               />
               <GlowHalo
                 type="sphere"
                 size={0.5}
-                glowScale={1.25}
+                glowScale={1.2}
                 color="#e87a10"
-                baseOpacity={0.12}
-                peakOpacity={0.4}
+                baseOpacity={0.05}
+                peakOpacity={0.18}
               />
             </InteractiveBrainRegion>
 

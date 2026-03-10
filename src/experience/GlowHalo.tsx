@@ -91,8 +91,8 @@ export function GlowHalo({
         transparent
         opacity={baseOpacity}
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        side={THREE.BackSide}
+        blending={THREE.NormalBlending}
+        side={THREE.FrontSide}
       />
     </mesh>
   );
