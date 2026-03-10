@@ -2,8 +2,8 @@
 
 @theme inline {
   /* Bright Jarvis theme */
-  --color-background: #FAFAF7;
-  --color-surface: #F0EDE6;
+  --color-background: #F5F5F0;
+  --color-surface: #ECEEF0;
   --color-primary: #1a1408;
   --color-secondary: #7a6548;
   --color-accent: #ff9a2e;
@@ -114,7 +114,7 @@ html.lenis body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #F0EDE6;
+  background: #E4EAED;
 }
 
 ::-webkit-scrollbar-thumb {

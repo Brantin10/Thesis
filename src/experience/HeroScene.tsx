@@ -6,6 +6,7 @@ import { Float, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 import { useAppStore } from "@/store/useAppStore";
 import { LearningPathSteps } from "./LearningPathSteps";
+import { NerveConnections } from "./NerveConnections";
 import { ParticleField } from "./ParticleField";
 
 // ─── Core Sphere Shaders ────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ const coreFragmentShader = `
   varying vec2 vUv;
 
   uniform float uTime;
+  uniform float uHeartbeat;
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -110,6 +112,10 @@ const coreFragmentShader = `
     float alpha = (surface * 0.5 + fresnel * 0.85) * breath;
     alpha = clamp(alpha, 0.12, 0.95);
 
+    // Heartbeat brightness surge
+    brightness *= (1.0 + uHeartbeat * 0.6);
+    alpha = clamp(alpha + uHeartbeat * 0.15, 0.12, 0.98);
+
     gl_FragColor = vec4(col * brightness * 2.0, alpha);
   }
 `;
@@ -120,8 +126,14 @@ function CoreSphere() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
 
-  useFrame((_, delta) => {
-    if (matRef.current) matRef.current.uniforms.uTime.value += delta;
+  useFrame((state, delta) => {
+    if (matRef.current) {
+      matRef.current.uniforms.uTime.value += delta;
+      // Heartbeat — sharp spike
+      const t = state.clock.getElapsedTime();
+      const heartRaw = Math.sin(t * 2.5) * 0.5 + 0.5;
+      matRef.current.uniforms.uHeartbeat.value = Math.pow(heartRaw, 4);
+    }
     if (meshRef.current) meshRef.current.rotation.y += delta * 0.12;
   });
 
@@ -132,7 +144,10 @@ function CoreSphere() {
         ref={matRef}
         vertexShader={coreVertexShader}
         fragmentShader={coreFragmentShader}
-        uniforms={{ uTime: { value: 0 } }}
+        uniforms={{
+          uTime: { value: 0 },
+          uHeartbeat: { value: 0 },
+        }}
         transparent
         side={THREE.DoubleSide}
         depthWrite={false}
@@ -147,8 +162,15 @@ function CoreSphere() {
 function InnerGlow() {
   const ref = useRef<THREE.Mesh>(null);
 
-  useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y -= delta * 0.08;
+  useFrame((state, delta) => {
+    if (ref.current) {
+      ref.current.rotation.y -= delta * 0.08;
+      // Heartbeat glow flare
+      const t = state.clock.getElapsedTime();
+      const heartbeat = Math.pow(Math.sin(t * 2.5) * 0.5 + 0.5, 4);
+      (ref.current.material as THREE.MeshBasicMaterial).opacity =
+        0.7 + heartbeat * 0.3;
+    }
   });
 
   return (
@@ -310,8 +332,9 @@ function DataPoints({ count = 40, radius = 1.6 }: { count?: number; radius?: num
 export function HeroScene() {
   const scrollProgress = useAppStore((s) => s.scrollProgress);
   const groupRef = useRef<THREE.Group>(null);
+  const floatGroupRef = useRef<THREE.Group>(null);
 
-  useFrame(() => {
+  useFrame((state) => {
     if (groupRef.current) {
       const targetZ = 8 + scrollProgress * 15;
       const targetY = scrollProgress * -3;
@@ -326,6 +349,14 @@ export function HeroScene() {
         0.05
       );
     }
+
+    // Heartbeat scale pulse on the brain group
+    if (floatGroupRef.current) {
+      const t = state.clock.getElapsedTime();
+      const heartbeat = Math.pow(Math.sin(t * 2.5) * 0.5 + 0.5, 4);
+      const scale = 1.0 + heartbeat * 0.06;
+      floatGroupRef.current.scale.setScalar(scale);
+    }
   });
 
   return (
@@ -336,44 +367,36 @@ export function HeroScene() {
 
       <group ref={groupRef}>
         <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.3}>
-          {/* Layer 0: Ambient warm glow backdrop */}
-          <AmbientGlow />
-
-          {/* Layer 1: Core sphere with hex grid shader */}
-          <CoreSphere />
-
-          {/* Layer 2: Inner glowing core */}
-          <InnerGlow />
-
-          {/* Layer 3: Inner wireframe (counter-rotating) */}
-          <WireframeShell
-            radius={0.85}
-            detail={2}
-            rotSpeedY={-0.15}
-            rotSpeedX={0.05}
-            color="#c96a10"
-            opacity={0.45}
-          />
-
-          {/* Layer 4: Outer hex shell */}
-          <WireframeShell
-            radius={1.8}
-            detail={1}
-            rotSpeedY={0.04}
-            rotSpeedX={-0.02}
-            color="#b87020"
-            opacity={0.3}
-          />
-
-          {/* Layer 5: Orbital rings at different tilts — bolder */}
-          <OrbitalRing radius={1.5} tiltX={0} tiltZ={0} speed={0.3} opacity={0.7} tube={0.012} />
-          <OrbitalRing radius={1.55} tiltX={Math.PI / 4} tiltZ={0.2} speed={-0.2} opacity={0.55} tube={0.01} />
-          <OrbitalRing radius={1.45} tiltX={-Math.PI / 6} tiltZ={-0.3} speed={0.25} opacity={0.5} tube={0.01} />
-          <OrbitalRing radius={1.7} tiltX={Math.PI / 3} tiltZ={0.5} speed={0.15} opacity={0.35} tube={0.008} />
-
-          {/* Layer 6: Data point cloud — larger and denser */}
-          <DataPoints count={70} radius={1.6} />
+          <group ref={floatGroupRef}>
+            <AmbientGlow />
+            <CoreSphere />
+            <InnerGlow />
+            <WireframeShell
+              radius={0.85}
+              detail={2}
+              rotSpeedY={-0.15}
+              rotSpeedX={0.05}
+              color="#c96a10"
+              opacity={0.45}
+            />
+            <WireframeShell
+              radius={1.8}
+              detail={1}
+              rotSpeedY={0.04}
+              rotSpeedX={-0.02}
+              color="#b87020"
+              opacity={0.3}
+            />
+            <OrbitalRing radius={1.5} tiltX={0} tiltZ={0} speed={0.3} opacity={0.7} tube={0.012} />
+            <OrbitalRing radius={1.55} tiltX={Math.PI / 4} tiltZ={0.2} speed={-0.2} opacity={0.55} tube={0.01} />
+            <OrbitalRing radius={1.45} tiltX={-Math.PI / 6} tiltZ={-0.3} speed={0.25} opacity={0.5} tube={0.01} />
+            <OrbitalRing radius={1.7} tiltX={Math.PI / 3} tiltZ={0.5} speed={0.15} opacity={0.35} tube={0.008} />
+            <DataPoints count={70} radius={1.6} />
+          </group>
         </Float>
+
+        {/* Nerve connections from brain to cards */}
+        <NerveConnections />
 
         {/* Learning path step cards */}
         <LearningPathSteps />
