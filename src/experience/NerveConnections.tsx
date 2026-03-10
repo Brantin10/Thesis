@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
 import { QuadraticBezierLine } from "@react-three/drei";
 import * as THREE from "three";
+import { useAnimationFrame } from "@/hooks/useAnimationFrame";
 
 // Same positions as LearningPathSteps — expanded 1.15x for longer nerve strings
 const CARD_POSITIONS: [number, number, number][] = [
@@ -51,7 +51,7 @@ function NerveLine({
     [target]
   );
 
-  useFrame((state) => {
+  useAnimationFrame((state) => {
     const t = state.clock.getElapsedTime();
 
     // Heartbeat-synced pulse intensity

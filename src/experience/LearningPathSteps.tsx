@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { useFrame } from "@react-three/fiber";
 import { Float, Html } from "@react-three/drei";
 import * as THREE from "three";
+import { useAnimationFrame } from "@/hooks/useAnimationFrame";
+import { useAppStore } from "@/store/useAppStore";
 
 // Positions expanded 1.15x to match NerveConnections endpoints
 const STEPS = [
@@ -29,11 +30,12 @@ function StepCard({
   const haloRef = useRef<THREE.Mesh>(null);
   const htmlRef = useRef<HTMLDivElement>(null);
   const time = useRef(delay * 2);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
 
   // Distance from origin for heartbeat propagation delay
   const dist = Math.sqrt(position[0] ** 2 + position[1] ** 2 + position[2] ** 2);
 
-  useFrame((state, delta) => {
+  useAnimationFrame((state, delta) => {
     time.current += delta;
     const t = state.clock.getElapsedTime();
 
@@ -73,7 +75,7 @@ function StepCard({
 
   return (
     <group ref={ref} position={[position[0], position[1], position[2]]}>
-      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.3}>
+      <Float speed={reducedMotion ? 0 : 2} rotationIntensity={reducedMotion ? 0 : 0.1} floatIntensity={reducedMotion ? 0 : 0.3}>
         <Html
           center
           distanceFactor={8}

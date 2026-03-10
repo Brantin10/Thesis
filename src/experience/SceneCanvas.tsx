@@ -1,12 +1,14 @@
 "use client";
 
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { Suspense, useEffect, useRef } from "react";
-import { Preload } from "@react-three/drei";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { Preload, useProgress } from "@react-three/drei";
 import * as THREE from "three";
 import { HeroScene } from "./HeroScene";
 import { PostProcessing } from "./PostProcessing";
 import { useAppStore } from "@/store/useAppStore";
+import { useAnimationFrame } from "@/hooks/useAnimationFrame";
+import { QUALITY_PRESETS } from "@/lib/qualityPresets";
 
 const EDGE_COLOR = new THREE.Color("#C4D8F0");
 
@@ -86,7 +88,7 @@ const bgFragmentShader = `
 function GradientBackground() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
-  useFrame((_, delta) => {
+  useAnimationFrame((_, delta) => {
     if (matRef.current) matRef.current.uniforms.uTime.value += delta;
   });
 
@@ -117,6 +119,7 @@ function SceneSetup() {
 
 function MouseParallax() {
   const { camera } = useThree();
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
   const mouse = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -129,6 +132,7 @@ function MouseParallax() {
   }, []);
 
   useFrame(() => {
+    if (reducedMotion) return;
     camera.position.x = THREE.MathUtils.lerp(
       camera.position.x,
       mouse.current.x * 0.5,
@@ -144,9 +148,52 @@ function MouseParallax() {
   return null;
 }
 
-// ─── Loader ─────────────────────────────────────────────────────────────────
+// ─── Loading Overlay — real progress tracking ────────────────────────────────
 
-function Loader() {
+function LoadingOverlay() {
+  const { progress, active } = useProgress();
+  const setLoaded = useAppStore((s) => s.setLoaded);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (!active && progress === 100) {
+      const timer = setTimeout(() => {
+        setVisible(false);
+        setLoaded(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [active, progress, setLoaded]);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-background transition-opacity duration-700 ${
+        !active && progress === 100 ? "opacity-0" : "opacity-100"
+      }`}
+    >
+      <div className="flex flex-col items-center gap-4">
+        {/* Progress bar */}
+        <div className="h-1 w-48 overflow-hidden rounded-full bg-accent/10">
+          <div
+            className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        {/* Percentage */}
+        <p className="font-mono text-sm tabular-nums text-secondary">
+          {Math.round(progress)}%
+        </p>
+        <p className="text-xs text-secondary/60">Loading experience...</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Suspense Fallback ──────────────────────────────────────────────────────
+
+function SuspenseFallback() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
@@ -163,13 +210,15 @@ function Loader() {
 
 export function SceneCanvas() {
   const isMobile = useAppStore((s) => s.isMobile);
+  const qualityLevel = useAppStore((s) => s.qualityLevel);
+  const quality = QUALITY_PRESETS[qualityLevel];
 
   return (
     <div className="canvas-container">
-      <Suspense fallback={<Loader />}>
+      <Suspense fallback={<SuspenseFallback />}>
         <Canvas
           camera={{ position: [0, 0, 8], fov: 50 }}
-          dpr={isMobile ? [1, 1.5] : [1, 2]}
+          dpr={quality.dpr}
           gl={{
             antialias: true,
             alpha: false,
@@ -185,6 +234,7 @@ export function SceneCanvas() {
           <Preload all />
         </Canvas>
       </Suspense>
+      <LoadingOverlay />
     </div>
   );
 }

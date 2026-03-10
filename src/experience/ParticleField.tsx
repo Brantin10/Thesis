@@ -1,10 +1,8 @@
 "use client";
 
 import { useRef, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-
-const COUNT = 500;
+import { useAnimationFrame } from "@/hooks/useAnimationFrame";
 const SPAWN_RADIUS_MIN = 12;
 const SPAWN_RADIUS_MAX = 18;
 const ABSORB_RADIUS = 0.8;
@@ -18,26 +16,26 @@ function spawnOnSphere(out: Float32Array, i: number) {
   out[i * 3 + 2] = r * Math.cos(phi);
 }
 
-export function ParticleField() {
+export function ParticleField({ count = 500 }: { count?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
 
   // Initialize positions on a distant sphere
   const positions = useMemo(() => {
-    const pos = new Float32Array(COUNT * 3);
-    for (let i = 0; i < COUNT; i++) {
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
       spawnOnSphere(pos, i);
     }
     return pos;
-  }, []);
+  }, [count]);
 
   // Per-particle random spiral offset (constant per particle)
   const spiralOffsets = useMemo(() => {
-    const offsets = new Float32Array(COUNT);
-    for (let i = 0; i < COUNT; i++) {
+    const offsets = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
       offsets[i] = (Math.random() - 0.5) * 0.01;
     }
     return offsets;
-  }, []);
+  }, [count]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -45,14 +43,14 @@ export function ParticleField() {
     return geo;
   }, [positions]);
 
-  useFrame((_, delta) => {
+  useAnimationFrame((_, delta) => {
     if (!pointsRef.current) return;
     const posArr = pointsRef.current.geometry.attributes.position
       .array as Float32Array;
 
     const dt = Math.min(delta, 0.05) * 60; // normalize to 60fps
 
-    for (let i = 0; i < COUNT; i++) {
+    for (let i = 0; i < count; i++) {
       const ix = i * 3;
       const x = posArr[ix];
       const y = posArr[ix + 1];

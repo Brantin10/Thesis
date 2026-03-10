@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import { Text3D, Center } from "@react-three/drei";
 import * as THREE from "three";
+import { useAnimationFrame } from "@/hooks/useAnimationFrame";
 
 const FONT_URL = "/fonts/helvetiker_bold.typeface.json";
 
@@ -11,7 +12,7 @@ export function FloatingTitle() {
   const groupRef = useRef<THREE.Group>(null);
   const { camera, viewport } = useThree();
 
-  useFrame((state) => {
+  useAnimationFrame((state) => {
     const t = state.clock.getElapsedTime();
 
     if (groupRef.current) {

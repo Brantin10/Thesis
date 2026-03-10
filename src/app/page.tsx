@@ -11,11 +11,13 @@ import { ReadThesis } from "@/sections/ReadThesis";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
 import { useViewport } from "@/hooks/useViewport";
 import { useLenisScroll } from "@/hooks/useLenis";
+import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 
 export default function Home() {
   useScrollProgress();
   useViewport();
   useLenisScroll();
+  useAdaptiveQuality();
 
   return (
     <>

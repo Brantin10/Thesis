@@ -5,10 +5,14 @@ import { useFrame } from "@react-three/fiber";
 import { Float, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 import { useAppStore } from "@/store/useAppStore";
+import { useAnimationFrame } from "@/hooks/useAnimationFrame";
+import { getHeartbeat } from "@/lib/heartbeat";
+import { QUALITY_PRESETS } from "@/lib/qualityPresets";
 import { LearningPathSteps } from "./LearningPathSteps";
 import { NerveConnections } from "./NerveConnections";
 import { ParticleField } from "./ParticleField";
 import { FloatingTitle } from "./FloatingTitle";
+import { InstancedParticles } from "./InstancedParticles";
 
 // ─── Core Sphere Shaders ────────────────────────────────────────────────────
 
@@ -111,19 +115,13 @@ const coreFragmentShader = `
   }
 `;
 
-// ─── Heartbeat helper ───────────────────────────────────────────────────────
-
-function getHeartbeat(t: number, delay = 0): number {
-  return Math.pow(Math.max(0, Math.sin((t - delay) * 2.5) * 0.5 + 0.5), 4);
-}
-
 // ─── Core Brain Sphere — independent scale pulse ────────────────────────────
 
 function CoreSphere() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
 
-  useFrame((state, delta) => {
+  useAnimationFrame((state, delta) => {
     const t = state.clock.getElapsedTime();
     const heartbeat = getHeartbeat(t);
 
@@ -133,7 +131,6 @@ function CoreSphere() {
     }
     if (meshRef.current) {
       meshRef.current.rotation.y += delta * 0.12;
-      // Independent scale pulse — core swells 12%
       const scale = 1.0 + heartbeat * 0.12;
       meshRef.current.scale.setScalar(scale);
     }
@@ -164,15 +161,13 @@ function CoreSphere() {
 function InnerGlow() {
   const ref = useRef<THREE.Mesh>(null);
 
-  useFrame((state, delta) => {
+  useAnimationFrame((state, delta) => {
     if (ref.current) {
       ref.current.rotation.y -= delta * 0.08;
       const t = state.clock.getElapsedTime();
       const heartbeat = getHeartbeat(t);
-      // Opacity flare — bigger surge
       (ref.current.material as THREE.MeshBasicMaterial).opacity =
         0.7 + heartbeat * 0.5;
-      // Scale pump — 25% bigger than core for dramatic depth
       const scale = 1.0 + heartbeat * 0.25;
       ref.current.scale.setScalar(scale);
     }
@@ -210,19 +205,17 @@ function WireframeShell({
 }) {
   const ref = useRef<THREE.Mesh>(null);
 
-  useFrame((state, delta) => {
+  useAnimationFrame((state, delta) => {
     if (ref.current) {
       const t = state.clock.getElapsedTime();
-      const heartbeat = getHeartbeat(t, 0.05); // slight delay after core
+      const heartbeat = getHeartbeat(t, 0.05);
 
       ref.current.rotation.y += delta * rotSpeedY;
       ref.current.rotation.x += delta * rotSpeedX;
 
-      // Breathe outward — 12% expansion
       const scale = 1.0 + heartbeat * 0.12;
       ref.current.scale.setScalar(scale);
 
-      // Opacity surge
       (ref.current.material as THREE.MeshBasicMaterial).opacity =
         opacity + heartbeat * 0.2;
     }
@@ -265,21 +258,18 @@ function OrbitalRing({
   const ref = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
 
-  useFrame((state, delta) => {
+  useAnimationFrame((state, delta) => {
     const t = state.clock.getElapsedTime();
     const heartbeat = getHeartbeat(t, heartbeatDelay);
 
     if (ref.current) {
-      // Speed surge on heartbeat — rotation speeds up briefly
       const speedMult = 1.0 + heartbeat * 1.5;
       ref.current.rotation.y += delta * speed * speedMult;
     }
     if (meshRef.current) {
-      // Scale ripple — ring expands outward
-      const scale = 1.0 + heartbeat * 0.10;
+      const scale = 1.0 + heartbeat * 0.1;
       meshRef.current.scale.setScalar(scale);
 
-      // Opacity pulse
       (meshRef.current.material as THREE.MeshBasicMaterial).opacity =
         opacity + heartbeat * 0.25;
     }
@@ -301,74 +291,16 @@ function OrbitalRing({
   );
 }
 
-// ─── Data Points — scatter outward on heartbeat ─────────────────────────────
-
-function DataPoints({ count = 40, radius = 1.6 }: { count?: number; radius?: number }) {
-  const ref = useRef<THREE.Points>(null);
-  const matRef = useRef<THREE.PointsMaterial>(null);
-
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = radius + (Math.random() - 0.5) * 0.4;
-      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i * 3 + 2] = r * Math.cos(phi);
-    }
-    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    return geo;
-  }, [count, radius]);
-
-  useFrame((state, delta) => {
-    if (ref.current) {
-      const t = state.clock.getElapsedTime();
-      const heartbeat = getHeartbeat(t, 0.1); // slight delay
-
-      ref.current.rotation.y += delta * 0.05;
-      ref.current.rotation.x += delta * 0.02;
-
-      // Points scatter outward on beat — 15% expansion
-      const scale = 1.0 + heartbeat * 0.15;
-      ref.current.scale.setScalar(scale);
-    }
-    // Point size surge — grow brighter/larger on beat
-    if (matRef.current) {
-      const t = state.clock.getElapsedTime();
-      const heartbeat = getHeartbeat(t, 0.1);
-      matRef.current.size = 0.06 + heartbeat * 0.03;
-    }
-  });
-
-  return (
-    <points ref={ref} geometry={geometry}>
-      <pointsMaterial
-        ref={matRef}
-        color="#d07018"
-        size={0.06}
-        transparent
-        opacity={0.9}
-        blending={THREE.NormalBlending}
-        depthWrite={false}
-        sizeAttenuation
-      />
-    </points>
-  );
-}
-
 // ─── Heartbeat Light — pulsing point light at orb center ────────────────────
 
 function HeartbeatLight() {
   const lightRef = useRef<THREE.PointLight>(null);
 
-  useFrame((state) => {
+  useAnimationFrame((state) => {
     const t = state.clock.getElapsedTime();
     const heartbeat = getHeartbeat(t);
     if (lightRef.current) {
       lightRef.current.intensity = heartbeat * 3.0;
-      // Color shifts from orange toward yellow-white at peak
       lightRef.current.color.setHSL(
         0.08 - heartbeat * 0.02,
         0.9 - heartbeat * 0.2,
@@ -408,27 +340,22 @@ const shockwaveFragmentShader = `
     vec2 center = vec2(0.5, 0.5);
     float dist = length(vUv - center) * 2.0;
 
-    // Heartbeat cycle synchronized with getHeartbeat
     float period = 6.2832 / 2.5;
     float phase = mod(uTime, period) / period;
 
-    // Expanding ring
     float ringRadius = phase;
     float ringDist = abs(dist - ringRadius);
     float ringWidth = 0.04 + phase * 0.06;
     float ring = exp(-ringDist * ringDist / (2.0 * ringWidth * ringWidth));
 
-    // Fade as ring expands
     float fade = exp(-phase * 3.0);
 
-    // Activation based on heartbeat
     float heartRaw = sin(uTime * 2.5) * 0.5 + 0.5;
     float heartbeat = pow(max(0.0, heartRaw), 4.0);
     float activation = smoothstep(0.02, 0.1, heartbeat + phase * 0.3);
 
     float alpha = ring * fade * activation * 0.6;
 
-    // Amber color shifting whiter at ring center
     vec3 color = mix(vec3(1.0, 0.6, 0.1), vec3(1.0, 0.9, 0.7), ring * 0.3);
 
     gl_FragColor = vec4(color, alpha);
@@ -438,7 +365,7 @@ const shockwaveFragmentShader = `
 function HeartbeatShockwave() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
-  useFrame((state) => {
+  useAnimationFrame((state) => {
     if (matRef.current) {
       matRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
     }
@@ -465,8 +392,12 @@ function HeartbeatShockwave() {
 
 export function HeroScene() {
   const scrollProgress = useAppStore((s) => s.scrollProgress);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
+  const qualityLevel = useAppStore((s) => s.qualityLevel);
+  const quality = QUALITY_PRESETS[qualityLevel];
   const groupRef = useRef<THREE.Group>(null);
 
+  // Scroll-based camera movement — keep as regular useFrame (user-initiated)
   useFrame(() => {
     if (groupRef.current) {
       const targetZ = 8 + scrollProgress * 15;
@@ -488,13 +419,23 @@ export function HeroScene() {
     <>
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 5, 5]} intensity={0.4} color="#fff5e0" />
-      <directionalLight position={[-4, 3, 6]} intensity={0.3} color="#ffe8cc" />
-
-      {/* Extra fill light from behind for text reflections */}
-      <directionalLight position={[0, -2, -6]} intensity={0.2} color="#ffe0b0" />
+      <directionalLight
+        position={[-4, 3, 6]}
+        intensity={0.3}
+        color="#ffe8cc"
+      />
+      <directionalLight
+        position={[0, -2, -6]}
+        intensity={0.2}
+        color="#ffe0b0"
+      />
 
       <group ref={groupRef}>
-        <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.3}>
+        <Float
+          speed={reducedMotion ? 0 : 1.5}
+          rotationIntensity={reducedMotion ? 0 : 0.15}
+          floatIntensity={reducedMotion ? 0 : 0.3}
+        >
           <group>
             <CoreSphere />
             <HeartbeatLight />
@@ -508,12 +449,48 @@ export function HeroScene() {
               opacity={0.45}
             />
             {/* Orbital rings with staggered heartbeat delays */}
-            <OrbitalRing radius={1.5} tiltX={0} tiltZ={0} speed={0.3} opacity={0.7} tube={0.012} heartbeatDelay={0.06} />
-            <OrbitalRing radius={1.55} tiltX={Math.PI / 4} tiltZ={0.2} speed={-0.2} opacity={0.55} tube={0.01} heartbeatDelay={0.12} />
-            <OrbitalRing radius={1.45} tiltX={-Math.PI / 6} tiltZ={-0.3} speed={0.25} opacity={0.5} tube={0.01} heartbeatDelay={0.18} />
-            <OrbitalRing radius={1.7} tiltX={Math.PI / 3} tiltZ={0.5} speed={0.15} opacity={0.35} tube={0.008} heartbeatDelay={0.24} />
-            <DataPoints count={70} radius={1.6} />
-            <HeartbeatShockwave />
+            <OrbitalRing
+              radius={1.5}
+              tiltX={0}
+              tiltZ={0}
+              speed={0.3}
+              opacity={0.7}
+              tube={0.012}
+              heartbeatDelay={0.06}
+            />
+            <OrbitalRing
+              radius={1.55}
+              tiltX={Math.PI / 4}
+              tiltZ={0.2}
+              speed={-0.2}
+              opacity={0.55}
+              tube={0.01}
+              heartbeatDelay={0.12}
+            />
+            <OrbitalRing
+              radius={1.45}
+              tiltX={-Math.PI / 6}
+              tiltZ={-0.3}
+              speed={0.25}
+              opacity={0.5}
+              tube={0.01}
+              heartbeatDelay={0.18}
+            />
+            <OrbitalRing
+              radius={1.7}
+              tiltX={Math.PI / 3}
+              tiltZ={0.5}
+              speed={0.15}
+              opacity={0.35}
+              tube={0.008}
+              heartbeatDelay={0.24}
+            />
+            {/* GPU Instanced Particles — replaces old DataPoints */}
+            <InstancedParticles
+              count={quality.particleCount}
+              radius={1.6}
+            />
+            {quality.enableShockwave && <HeartbeatShockwave />}
           </group>
         </Float>
 
@@ -527,14 +504,14 @@ export function HeroScene() {
       </Suspense>
 
       {/* Background particles */}
-      <ParticleField />
+      <ParticleField count={quality.backgroundParticleCount} />
 
       {/* Amber sparkles */}
       <Sparkles
-        count={100}
+        count={quality.sparkleCount}
         scale={15}
         size={2}
-        speed={0.3}
+        speed={reducedMotion ? 0 : 0.3}
         color="#e08020"
         opacity={0.5}
       />
