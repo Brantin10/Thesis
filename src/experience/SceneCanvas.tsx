@@ -6,6 +6,7 @@ import { Preload, useProgress } from "@react-three/drei";
 import * as THREE from "three";
 import { HeroScene } from "./HeroScene";
 import { PostProcessing } from "./PostProcessing";
+import { ChromaticAberration } from "./ChromaticAberration";
 import { useAppStore } from "@/store/useAppStore";
 import { useAnimationFrame } from "@/hooks/useAnimationFrame";
 import { QUALITY_PRESETS } from "@/lib/qualityPresets";
@@ -151,26 +152,51 @@ function MouseParallax() {
 // ─── Loading Overlay — real progress tracking ────────────────────────────────
 
 function LoadingOverlay() {
-  const { progress, active } = useProgress();
+  const { progress, active, loaded, total } = useProgress();
   const setLoaded = useAppStore((s) => s.setLoaded);
   const [visible, setVisible] = useState(true);
+  const [fading, setFading] = useState(false);
+
+  // Determine if loading is truly done:
+  // - either progress hit 100% and nothing is actively loading
+  // - or nothing was ever queued (total === 0) and loader is idle
+  const isDone = (!active && progress === 100) || (!active && total === 0 && !visible) || (!active && loaded === total && total > 0);
 
   useEffect(() => {
-    if (!active && progress === 100) {
+    // If nothing to load at all (procedural scene), dismiss after a short delay
+    if (!active && total === 0) {
       const timer = setTimeout(() => {
-        setVisible(false);
-        setLoaded(true);
-      }, 800);
+        setFading(true);
+        setTimeout(() => {
+          setVisible(false);
+          setLoaded(true);
+        }, 700);
+      }, 600);
       return () => clearTimeout(timer);
     }
-  }, [active, progress, setLoaded]);
+
+    // Normal case: assets finished loading
+    if (!active && progress === 100) {
+      const timer = setTimeout(() => {
+        setFading(true);
+        setTimeout(() => {
+          setVisible(false);
+          setLoaded(true);
+        }, 700);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [active, progress, total, setLoaded]);
 
   if (!visible) return null;
+
+  // Show 100% when fading out for a polished feel
+  const displayProgress = fading ? 100 : Math.round(progress);
 
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center bg-background transition-opacity duration-700 ${
-        !active && progress === 100 ? "opacity-0" : "opacity-100"
+        fading ? "opacity-0" : "opacity-100"
       }`}
     >
       <div className="flex flex-col items-center gap-4">
@@ -178,12 +204,12 @@ function LoadingOverlay() {
         <div className="h-1 w-48 overflow-hidden rounded-full bg-accent/10">
           <div
             className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${displayProgress}%` }}
           />
         </div>
         {/* Percentage */}
         <p className="font-mono text-sm tabular-nums text-secondary">
-          {Math.round(progress)}%
+          {displayProgress}%
         </p>
         <p className="text-xs text-secondary/60">Loading experience...</p>
       </div>
@@ -231,6 +257,9 @@ export function SceneCanvas() {
           <GradientBackground />
           <HeroScene />
           {!isMobile && <PostProcessing />}
+          {quality.enableChromaticAberration && (
+            <ChromaticAberration strength={quality.chromaticStrength} />
+          )}
           <Preload all />
         </Canvas>
       </Suspense>

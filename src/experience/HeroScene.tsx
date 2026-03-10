@@ -13,6 +13,7 @@ import { NerveConnections } from "./NerveConnections";
 import { ParticleField } from "./ParticleField";
 import { FloatingTitle } from "./FloatingTitle";
 import { InstancedParticles } from "./InstancedParticles";
+import { GlowHalo } from "./GlowHalo";
 
 // ─── Core Sphere Shaders ────────────────────────────────────────────────────
 
@@ -70,10 +71,25 @@ const coreFragmentShader = `
     float t = uTime;
 
     vec3 viewDir = normalize(-vPosition);
-    float fresnel = 1.0 - abs(dot(viewDir, vNormal));
-    fresnel = pow(fresnel, 1.5);
+    vec3 norm = normalize(vNormal);
 
-    vec3 n = normalize(vNormal);
+    // ── Enhanced Fresnel with animated rim light direction ──
+    // Animated rim light direction — sweeps around the sphere
+    vec3 rimDir = normalize(vec3(
+      sin(t * 0.3) * 0.5,
+      cos(t * 0.4) * 0.3,
+      1.0
+    ));
+    float dirFresnel = 1.0 - abs(dot(rimDir, norm));
+    dirFresnel = pow(dirFresnel, 2.0);
+
+    float viewFresnel = 1.0 - abs(dot(viewDir, norm));
+    viewFresnel = pow(viewFresnel, 1.5);
+
+    // Combine: standard fresnel + directional highlight
+    float fresnel = max(viewFresnel, dirFresnel * 0.6);
+
+    vec3 n = norm;
     float theta = acos(clamp(n.y, -1.0, 1.0));
     float phi = atan(n.z, n.x);
     vec2 sphereUV = vec2(phi / 6.2832 + 0.5, theta / 3.1416);
@@ -98,6 +114,12 @@ const coreFragmentShader = `
 
     vec3 col = mix(baseCol, hiCol, surface);
     col = mix(col, hotCol, fresnel * 0.5);
+
+    // ── Heartbeat-driven rim color shift ──
+    vec3 rimBaseColor = vec3(1.0, 0.5, 0.08);  // orange
+    vec3 rimPeakColor = vec3(1.0, 0.95, 0.85); // bright white
+    vec3 rimColor = mix(rimBaseColor, rimPeakColor, uHeartbeat);
+    col = mix(col, rimColor, fresnel * (0.5 + uHeartbeat * 0.5));
 
     float brightness = (surface * 0.8 + fresnel * 1.0) * breath;
     float alpha = (surface * 0.5 + fresnel * 0.85) * breath;
@@ -186,7 +208,39 @@ function InnerGlow() {
   );
 }
 
-// ─── Wireframe Shell — breathes outward on heartbeat ────────────────────────
+// ─── Wireframe Shell Fresnel Shaders ─────────────────────────────────────────
+
+const wireframeVertexShader = `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const wireframeFragmentShader = `
+  precision highp float;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  uniform float uOpacity;
+  uniform float uHeartbeat;
+  uniform vec3 uColor;
+
+  void main() {
+    vec3 viewDir = normalize(-vPosition);
+    float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), 2.5);
+
+    // Heartbeat rim glow
+    vec3 rimColor = mix(uColor, vec3(1.0, 0.9, 0.7), uHeartbeat * 0.6);
+    float alpha = uOpacity + fresnel * 0.4 + uHeartbeat * 0.2;
+
+    gl_FragColor = vec4(mix(uColor, rimColor, fresnel), alpha);
+  }
+`;
+
+// ─── Wireframe Shell — breathes outward on heartbeat with fresnel ────────────
 
 function WireframeShell({
   radius,
@@ -204,6 +258,8 @@ function WireframeShell({
   opacity: number;
 }) {
   const ref = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const colorObj = useMemo(() => new THREE.Color(color), [color]);
 
   useAnimationFrame((state, delta) => {
     if (ref.current) {
@@ -216,27 +272,66 @@ function WireframeShell({
       const scale = 1.0 + heartbeat * 0.12;
       ref.current.scale.setScalar(scale);
 
-      (ref.current.material as THREE.MeshBasicMaterial).opacity =
-        opacity + heartbeat * 0.2;
+      if (matRef.current) {
+        matRef.current.uniforms.uHeartbeat.value = heartbeat;
+      }
     }
   });
 
   return (
     <mesh ref={ref}>
       <icosahedronGeometry args={[radius, detail]} />
-      <meshBasicMaterial
+      <shaderMaterial
+        ref={matRef}
+        vertexShader={wireframeVertexShader}
+        fragmentShader={wireframeFragmentShader}
         wireframe
-        color={color}
         transparent
-        opacity={opacity}
-        blending={THREE.NormalBlending}
         depthWrite={false}
+        uniforms={{
+          uOpacity: { value: opacity },
+          uHeartbeat: { value: 0 },
+          uColor: { value: colorObj },
+        }}
       />
     </mesh>
   );
 }
 
-// ─── Orbital Ring — staggered heartbeat ripple ──────────────────────────────
+// ─── Orbital Ring Fresnel Shaders ─────────────────────────────────────────────
+
+const ringVertexShader = `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const ringFragmentShader = `
+  precision highp float;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  uniform float uOpacity;
+  uniform float uHeartbeat;
+
+  void main() {
+    vec3 viewDir = normalize(-vPosition);
+    float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), 2.0);
+
+    vec3 baseColor = vec3(0.82, 0.44, 0.09); // #d07018
+    vec3 rimColor = mix(baseColor, vec3(1.0, 0.85, 0.6), uHeartbeat * 0.7);
+
+    float alpha = uOpacity + fresnel * 0.3 + uHeartbeat * 0.25;
+    vec3 finalColor = mix(baseColor, rimColor, fresnel);
+
+    gl_FragColor = vec4(finalColor, alpha);
+  }
+`;
+
+// ─── Orbital Ring — staggered heartbeat ripple with fresnel ──────────────────
 
 function OrbitalRing({
   radius,
@@ -257,6 +352,7 @@ function OrbitalRing({
 }) {
   const ref = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
 
   useAnimationFrame((state, delta) => {
     const t = state.clock.getElapsedTime();
@@ -269,9 +365,9 @@ function OrbitalRing({
     if (meshRef.current) {
       const scale = 1.0 + heartbeat * 0.1;
       meshRef.current.scale.setScalar(scale);
-
-      (meshRef.current.material as THREE.MeshBasicMaterial).opacity =
-        opacity + heartbeat * 0.25;
+    }
+    if (matRef.current) {
+      matRef.current.uniforms.uHeartbeat.value = heartbeat;
     }
   });
 
@@ -279,12 +375,16 @@ function OrbitalRing({
     <group ref={ref} rotation={[tiltX, 0, tiltZ]}>
       <mesh ref={meshRef}>
         <torusGeometry args={[radius, tube, 16, 128]} />
-        <meshBasicMaterial
-          color="#d07018"
+        <shaderMaterial
+          ref={matRef}
+          vertexShader={ringVertexShader}
+          fragmentShader={ringFragmentShader}
           transparent
-          opacity={opacity}
-          blending={THREE.NormalBlending}
           depthWrite={false}
+          uniforms={{
+            uOpacity: { value: opacity },
+            uHeartbeat: { value: 0 },
+          }}
         />
       </mesh>
     </group>
@@ -484,6 +584,23 @@ export function HeroScene() {
               opacity={0.35}
               tube={0.008}
               heartbeatDelay={0.24}
+            />
+            {/* Fake bloom glow halos — additive glow around key elements */}
+            <GlowHalo
+              type="sphere"
+              size={1.2}
+              glowScale={1.18}
+              color="#ff9a2e"
+              baseOpacity={0.15}
+              peakOpacity={0.45}
+            />
+            <GlowHalo
+              type="sphere"
+              size={0.5}
+              glowScale={1.25}
+              color="#e87a10"
+              baseOpacity={0.12}
+              peakOpacity={0.4}
             />
             {/* GPU Instanced Particles — replaces old DataPoints */}
             <InstancedParticles

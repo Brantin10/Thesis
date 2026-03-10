@@ -12,6 +12,8 @@ export interface QualitySettings {
   dpr: [number, number];
   enableShockwave: boolean;
   enableNerveGlow: boolean;
+  enableChromaticAberration: boolean;
+  chromaticStrength: number;
   shaderDetail: "simple" | "full";
 }
 
@@ -23,6 +25,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     dpr: [1, 1],
     enableShockwave: false,
     enableNerveGlow: false,
+    enableChromaticAberration: false,
+    chromaticStrength: 0,
     shaderDetail: "simple",
   },
   medium: {
@@ -32,6 +36,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     dpr: [1, 1.5],
     enableShockwave: true,
     enableNerveGlow: true,
+    enableChromaticAberration: true,
+    chromaticStrength: 0.002,
     shaderDetail: "full",
   },
   high: {
@@ -41,6 +47,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     dpr: [1, 2],
     enableShockwave: true,
     enableNerveGlow: true,
+    enableChromaticAberration: true,
+    chromaticStrength: 0.004,
     shaderDetail: "full",
   },
 };
